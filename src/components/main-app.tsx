@@ -13,6 +13,7 @@ import { profileService } from '@/lib/firestore-service';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { SettingsPanel } from '@/components/settings/settings-panel';
 import { BookOpen, BarChart3, Settings } from 'lucide-react';
 
 const CATEGORIES = [
@@ -281,12 +282,7 @@ export function MainApp() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card className="max-w-2xl mx-auto">
-              <CardContent className="p-6">
-                <h2 className="text-2xl font-bold mb-4">Settings</h2>
-                <p className="text-muted-foreground">Settings panel coming soon...</p>
-              </CardContent>
-            </Card>
+            <SettingsPanel />
           </TabsContent>
         </Tabs>
       </div>
