@@ -123,51 +123,83 @@ export const progressService = {
     const docId = `${userId}_${wordId}`;
     const docRef = doc(db, COLLECTIONS.USER_PROGRESS, docId);
     const now = Timestamp.now();
-    
+    const profileSnap = await getDoc(doc(db, COLLECTIONS.USER_PROFILES, userId));
+    const strategy: 'sm2' | 'exponential' =
+      (profileSnap.data()?.preferences?.reviewStrategy as 'sm2' | 'exponential') || 'exponential';
+
     const existing = await getDoc(docRef);
-    
+
+    const calculateNextReview = (
+      data: UserProgress | null,
+      newStreak: number,
+      correct: boolean
+    ) => {
+      const next = new Date();
+      let interval = 1;
+      if (strategy === 'exponential') {
+        interval = correct ? Math.pow(2, newStreak) : 1;
+      } else {
+        // Simplified SM-2 style calculation
+        if (!correct) {
+          interval = 1;
+        } else if (newStreak === 1) {
+          interval = 1;
+        } else if (newStreak === 2) {
+          interval = 6;
+        } else {
+          const prevInterval = data && data.nextReview && data.lastReviewed
+            ? Math.max(1,
+                Math.round(
+                  (data.nextReview.toDate().getTime() - data.lastReviewed.toDate().getTime()) /
+                    (1000 * 60 * 60 * 24)
+                )
+              )
+            : 6;
+          interval = Math.round(prevInterval * 2.5);
+        }
+      }
+      next.setDate(next.getDate() + interval);
+      return next;
+    };
+
     if (existing.exists()) {
       const data = existing.data() as UserProgress;
       const newCorrectCount = isCorrect ? data.correctCount + 1 : data.correctCount;
       const newIncorrectCount = isCorrect ? data.incorrectCount : data.incorrectCount + 1;
       const newStreakCount = isCorrect ? data.streakCount + 1 : 0;
-      
+
       // Calculate difficulty based on performance
       const totalAttempts = newCorrectCount + newIncorrectCount;
       const accuracy = newCorrectCount / totalAttempts;
       let difficultyLevel: 'easy' | 'medium' | 'hard' = 'medium';
-      
+
       if (accuracy > 0.8) difficultyLevel = 'easy';
       else if (accuracy < 0.5) difficultyLevel = 'hard';
-      
-      // Calculate next review date based on difficulty and streak
-      const nextReviewDays = difficultyLevel === 'easy' ? 7 : difficultyLevel === 'medium' ? 3 : 1;
-      const nextReview = new Date();
-      nextReview.setDate(nextReview.getDate() + nextReviewDays);
-      
+
+      const nextReviewDate = calculateNextReview(data, newStreakCount, isCorrect);
+
       await updateDoc(docRef, {
         correctCount: newCorrectCount,
         incorrectCount: newIncorrectCount,
         streakCount: newStreakCount,
         lastReviewed: now,
         difficultyLevel,
-        nextReview: Timestamp.fromDate(nextReview),
+        nextReview: Timestamp.fromDate(nextReviewDate),
         isLearned: accuracy > 0.8 && totalAttempts >= 5,
       });
     } else {
-      // Create new progress entry
-      const nextReview = new Date();
-      nextReview.setDate(nextReview.getDate() + (isCorrect ? 3 : 1));
-      
+      const newStreakCount = isCorrect ? 1 : 0;
+      const nextReviewDate = calculateNextReview(null, newStreakCount, isCorrect);
+
       await setDoc(docRef, {
         userId,
         wordId,
         correctCount: isCorrect ? 1 : 0,
         incorrectCount: isCorrect ? 0 : 1,
-        streakCount: isCorrect ? 1 : 0,
+        streakCount: newStreakCount,
         lastReviewed: now,
         difficultyLevel: 'medium',
-        nextReview: Timestamp.fromDate(nextReview),
+        nextReview: Timestamp.fromDate(nextReviewDate),
         isLearned: false,
       });
     }
@@ -241,6 +273,7 @@ export const profileService = {
         dailyGoal: 20,
         preferredCategories: [],
         enableNotifications: true,
+        reviewStrategy: 'exponential',
       },
     };
     

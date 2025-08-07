@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Target, Trophy, Zap } from 'lucide-react';
+import { ReviewStrategySelector } from '@/components/settings/review-strategy-selector';
 
 export function ProgressDashboard() {
   const { user } = useAuth();
@@ -150,6 +151,11 @@ export function ProgressDashboard() {
             <Badge variant={profile.preferences.enableNotifications ? 'default' : 'secondary'}>
               {profile.preferences.enableNotifications ? 'Enabled' : 'Disabled'}
             </Badge>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium mb-2">Review Strategy</h4>
+            <ReviewStrategySelector />
           </div>
         </CardContent>
       </Card>

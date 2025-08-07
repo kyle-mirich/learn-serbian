@@ -53,6 +53,7 @@ export const userProfileSchema = z.object({
     dailyGoal: z.number().default(20),
     preferredCategories: z.array(z.string()).default([]),
     enableNotifications: z.boolean().default(true),
+    reviewStrategy: z.enum(['sm2', 'exponential']).default('exponential'),
   }).default({}),
 });
 
@@ -61,6 +62,7 @@ export type SerbianWord = z.infer<typeof serbianWordSchema>;
 export type UserProgress = z.infer<typeof userProgressSchema>;
 export type StudySession = z.infer<typeof studySessionSchema>;
 export type UserProfile = z.infer<typeof userProfileSchema>;
+export type ReviewStrategy = 'sm2' | 'exponential';
 
 // Firestore collection names
 export const COLLECTIONS = {
