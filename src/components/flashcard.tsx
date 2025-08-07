@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { FC } from 'react';
@@ -11,6 +12,10 @@ interface FlashcardProps {
   isFlipped: boolean;
   isLoading: boolean;
   onClick: () => void;
+  rank?: number;
+  frequency?: number;
+  category?: string;
+  categoryIcon?: string;
 }
 
 export const Flashcard: FC<FlashcardProps> = ({
@@ -19,6 +24,10 @@ export const Flashcard: FC<FlashcardProps> = ({
   isFlipped,
   isLoading,
   onClick,
+  rank,
+  frequency,
+  category,
+  categoryIcon,
 }) => {
   return (
     <div
@@ -34,8 +43,27 @@ export const Flashcard: FC<FlashcardProps> = ({
       >
         {/* Front of the card */}
         <Card className="absolute h-full w-full [backface-visibility:hidden]">
-          <CardContent className="flex h-full items-center justify-center">
-            <h2 className="font-headline text-5xl text-primary">{serbianWord}</h2>
+          <CardContent className="flex h-full flex-col items-center justify-center p-6">
+            <h2 className="font-headline text-5xl text-primary mb-4">{serbianWord}</h2>
+            {(rank || category) && (
+              <div className="flex gap-2 flex-wrap justify-center">
+                {category && (
+                  <Badge variant="default" className="text-xs">
+                    {categoryIcon} {category}
+                  </Badge>
+                )}
+                {rank && (
+                  <Badge variant="secondary" className="text-xs">
+                    #{rank}
+                  </Badge>
+                )}
+                {frequency && (
+                  <Badge variant="outline" className="text-xs">
+                    {frequency.toLocaleString()} uses
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

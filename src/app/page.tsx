@@ -1,89 +1,173 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
-import { Button } from '@/components/ui/button';
-import { Flashcard } from '@/components/flashcard';
-import { getTranslation } from '@/app/actions';
-import { ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { CategoryGrid } from '@/components/category-grid';
+import { StudyModeSelector, StudyMode } from '@/components/study-mode-selector';
+import { StudySession } from '@/components/study-session';
+import { getCategoryWords, getWordCategories, getMixedRandomWords } from '@/app/actions';
+import { WordCategory, WordEntry } from '@/lib/word-data';
+import { 
+  getStoredProgress, 
+  saveProgress, 
+  getProgressSummary, 
+  markWordAsStudied,
+  initializeCategoryProgress,
+  StudyProgress 
+} from '@/lib/progress';
 
-const serbianWords = [
-  "kuća",
-  "pas",
-  "mačka",
-  "knjiga",
-  "drvo",
-  "sunce",
-  "voda",
-  "nebo",
-  "ljubav",
-  "prijatelj"
-];
+type AppState = 'categories' | 'study-mode' | 'studying';
 
 export default function Home() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [translations, setTranslations] = useState<Record<string, string>>({});
-  const [isPending, startTransition] = useTransition();
+  const [appState, setAppState] = useState<AppState>('categories');
+  const [categories, setCategories] = useState<WordCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [studyMode, setStudyMode] = useState<StudyMode>('sequential');
+  const [categoryWords, setCategoryWords] = useState<WordEntry[]>([]);
+  const [progress, setProgress] = useState<StudyProgress>({});
+  const [isLoading, setIsLoading] = useState(false);
 
-  const currentWord = useMemo(() => serbianWords[currentIndex], [currentIndex]);
-  const currentTranslation = useMemo(() => translations[currentWord], [translations, currentWord]);
+  // Load categories and progress on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const categoriesData = await getWordCategories();
+      setCategories(categoriesData);
+      setProgress(getStoredProgress());
+    };
 
-  const handleFlip = () => {
-    const wasFlipped = isFlipped;
-    setIsFlipped(!wasFlipped);
+    loadInitialData();
+  }, []);
 
-    if (!wasFlipped && !currentTranslation) {
-      startTransition(async () => {
-        const translation = await getTranslation(currentWord);
-        setTranslations(prev => ({ ...prev, [currentWord]: translation }));
-      });
+  // Save progress whenever it changes
+  useEffect(() => {
+    saveProgress(progress);
+  }, [progress]);
+
+  const progressSummary = useMemo(() => getProgressSummary(progress), [progress]);
+
+  const selectedCategory = useMemo(() => 
+    categories.find(cat => cat.id === selectedCategoryId), 
+    [categories, selectedCategoryId]
+  );
+
+  const studiedWordsSet = useMemo(() => 
+    progress[selectedCategoryId]?.studiedWords || new Set<string>(),
+    [progress, selectedCategoryId]
+  );
+
+  const handleSelectCategory = async (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    setIsLoading(true);
+
+    try {
+      let words: WordEntry[] = [];
+      
+      if (categoryId === 'mixed-random') {
+        // Load mixed random words from all categories
+        words = await getMixedRandomWords(); // ALL words from all categories
+        setStudyMode('random'); // Force random mode for mixed
+      } else {
+        // Load all words for the selected category
+        words = await getCategoryWords(categoryId);
+      }
+      
+      setCategoryWords(words);
+      
+      // Initialize progress for this category
+      setProgress(prev => initializeCategoryProgress(prev, categoryId, words.length));
+      
+      setAppState('study-mode');
+    } catch (error) {
+      console.error('Error loading category words:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const goTo = (index: number) => {
-    if (index >= 0 && index < serbianWords.length) {
-      setCurrentIndex(index);
-      setIsFlipped(false);
-    }
+  const handleStartStudying = () => {
+    setAppState('studying');
   };
-  
-  const goToNext = () => goTo((currentIndex + 1) % serbianWords.length);
-  const goToPrev = () => goTo((currentIndex - 1 + serbianWords.length) % serbianWords.length);
+
+  const handleBackToCategories = () => {
+    setAppState('categories');
+    setSelectedCategoryId('');
+    setCategoryWords([]);
+  };
+
+  const handleBackToStudyMode = () => {
+    setAppState('study-mode');
+  };
+
+  const handleWordStudied = (word: string) => {
+    setProgress(prev => markWordAsStudied(prev, selectedCategoryId, word));
+  };
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading words...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (appState === 'studying' && selectedCategory) {
+    return (
+      <StudySession
+        categoryId={selectedCategoryId}
+        words={categoryWords}
+        studyMode={studyMode}
+        onBack={handleBackToStudyMode}
+        onWordStudied={handleWordStudied}
+        studiedWords={studiedWordsSet}
+      />
+    );
+  }
+
+  if (appState === 'study-mode' && selectedCategory) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8">
+        <div className="text-center mb-8">
+          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary mb-2">Serbian Flash</h1>
+          <p className="font-body text-muted-foreground text-lg">Учимо srpski! (Let's learn Serbian!)</p>
+        </div>
+
+        <StudyModeSelector
+          category={selectedCategory}
+          studyMode={studyMode}
+          onStudyModeChange={setStudyMode}
+          onStartStudying={handleStartStudying}
+          wordCount={categoryWords.length}
+          progress={progressSummary[selectedCategoryId] || { studied: 0, total: 0 }}
+        />
+
+        <div className="mt-6">
+          <button
+            onClick={handleBackToCategories}
+            className="text-muted-foreground hover:text-primary transition-colors text-sm"
+          >
+            ← Back to categories
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8">
       <div className="text-center mb-8">
-        <h1 className="font-headline text-5xl md:text-6xl font-bold text-primary">Serbian Flash</h1>
-        <p className="font-body text-muted-foreground mt-2 text-lg">Учимо српски! (Let's learn Serbian!)</p>
+        <h1 className="font-headline text-5xl md:text-6xl font-bold text-primary mb-2">Serbian Flash</h1>
+        <p className="font-body text-muted-foreground text-lg">Учимо српски! (Let's learn Serbian!)</p>
+        <p className="font-body text-muted-foreground text-sm mt-2">Choose a category to start learning</p>
       </div>
 
-      <div className="w-full max-w-md mb-8 flex items-center justify-center" style={{ minHeight: '16rem' }}>
-        <Flashcard
-          serbianWord={currentWord}
-          englishWord={currentTranslation}
-          isFlipped={isFlipped}
-          isLoading={isPending}
-          onClick={handleFlip}
-        />
-      </div>
-
-      <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md">
-        <div className="flex gap-4 w-full sm:w-auto">
-          <Button onClick={goToPrev} variant="outline" size="lg" className="flex-1 sm:flex-none" aria-label="Previous card">
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
-          <Button onClick={goToNext} variant="outline" size="lg" className="flex-1 sm:flex-none" aria-label="Next card">
-            <ArrowRight className="h-6 w-6" />
-          </Button>
-        </div>
-        <Button onClick={handleFlip} size="lg" className="w-full sm:flex-1" aria-label="Flip card">
-          <RefreshCw className={`h-6 w-6 mr-2 transition-transform duration-500 ${isFlipped ? 'rotate-180' : ''}`} />
-          {isFlipped ? 'Flip to Serbian' : 'Reveal English'}
-        </Button>
-      </div>
-        <div className="mt-4 text-sm text-muted-foreground font-body">
-            Card {currentIndex + 1} of {serbianWords.length}
-        </div>
+      <CategoryGrid
+        categories={categories}
+        selectedCategory={selectedCategoryId}
+        onSelectCategory={handleSelectCategory}
+        progress={progressSummary}
+      />
     </main>
   );
 }

@@ -1,11 +1,11 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-
 export interface WordEntry {
   word: string;
   frequency: number;
   relativeFrequency: number;
   rank: number;
+  category?: string;
+  categoryId?: string;
+  categoryIcon?: string;
 }
 
 export interface WordCategory {
@@ -17,6 +17,7 @@ export interface WordCategory {
 }
 
 export const WORD_CATEGORIES: WordCategory[] = [
+  { id: 'mixed-random', name: 'Mixed Random', description: 'Random words from all categories', icon: '🎲', color: 'bg-gradient-to-r from-purple-500 to-pink-500' },
   { id: 'word', name: 'Most Used Words', description: 'Common words across all categories', icon: '📝', color: 'bg-blue-500' },
   { id: 'verb', name: 'Verbs', description: 'Action words and states of being', icon: '🏃', color: 'bg-green-500' },
   { id: 'noun', name: 'Nouns', description: 'People, places, and things', icon: '🏠', color: 'bg-purple-500' },
@@ -28,56 +29,60 @@ export const WORD_CATEGORIES: WordCategory[] = [
   { id: 'numbers', name: 'Numbers', description: 'Numerical expressions', icon: '🔢', color: 'bg-red-500' },
 ];
 
-export async function loadWordsFromCategory(categoryId: string): Promise<WordEntry[]> {
-  try {
-    const csvPath = path.join(process.cwd(), 'most-used', categoryId);
-    const files = await fs.readdir(csvPath);
-    const csvFile = files.find(file => file.endsWith('.csv'));
-    
-    if (!csvFile) {
-      throw new Error(`No CSV file found for category: ${categoryId}`);
-    }
-    
-    const filePath = path.join(csvPath, csvFile);
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    
-    return parseCSV(fileContent);
-  } catch (error) {
-    console.error(`Error loading words from category ${categoryId}:`, error);
-    return [];
-  }
-}
+export const ACTUAL_CATEGORIES = WORD_CATEGORIES.filter(cat => cat.id !== 'mixed-random');
 
-function parseCSV(content: string): WordEntry[] {
+export function parseCSV(content: string): WordEntry[] {
   const lines = content.split('\n');
   const dataLines = lines.slice(3); // Skip header lines (corpus info + column headers)
   
   const words: WordEntry[] = [];
   let rank = 1;
+  let skippedCount = 0;
   
   for (const line of dataLines) {
     if (!line.trim()) continue;
     
-    const [item, frequency, relativeFrequency] = parseCSVLine(line);
+    const columns = parseCSVLine(line);
+    const [item, frequency, relativeFrequency] = columns;
     
-    if (item && frequency && relativeFrequency) {
+    // Handle both 2-column (Item, Frequency) and 3-column (Item, Frequency, Relative frequency) formats
+    if (item && frequency) {
       // Clean the word (remove quotes and extra characters)
       const cleanWord = item.replace(/^"(.*)"$/, '$1').trim();
       
-      // Skip punctuation and very short entries
-      if (cleanWord.length < 2 || /^[^\p{L}]+$/u.test(cleanWord)) {
+      // Skip punctuation and very short entries, but be more permissive
+      if (cleanWord.length < 1 || cleanWord === '') {
+        skippedCount++;
         continue;
       }
       
+      // Skip pure punctuation and very short words, but allow meaningful short words
+      if (/^[.,;:!?()[\]{}'"«»„"–—\-_+=@#$%^&*~`…]+$/.test(cleanWord)) {
+        skippedCount++;
+        continue;
+      }
+      
+      // Skip very short entries unless they are common Serbian words
+      if (cleanWord.length === 1 && !/^[aiouAIOU]$/.test(cleanWord)) {
+        skippedCount++;
+        continue;
+      }
+      
+      const freqNum = parseInt(frequency, 10) || 0;
+      const relFreqNum = relativeFrequency ? parseFloat(relativeFrequency) : 0;
+      
       words.push({
         word: cleanWord,
-        frequency: parseInt(frequency, 10),
-        relativeFrequency: parseFloat(relativeFrequency),
+        frequency: freqNum,
+        relativeFrequency: relFreqNum,
         rank: rank++
       });
+    } else {
+      skippedCount++;
     }
   }
   
+  console.log(`Parsed ${words.length} words, skipped ${skippedCount} entries`);
   return words;
 }
 
