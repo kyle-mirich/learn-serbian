@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(pnpm typecheck:*)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Bash(pkill:*)",
+      "Bash(cat:*)",
+      "Bash(dos2unix:*)"
     ],
     "deny": []
   }
