@@ -5,7 +5,8 @@
       "Bash(pnpm lint:*)",
       "Bash(pkill:*)",
       "Bash(cat:*)",
-      "Bash(dos2unix:*)"
+      "Bash(dos2unix:*)",
+      "Bash(pnpm exec tsc:*)"
     ],
     "deny": []
   }

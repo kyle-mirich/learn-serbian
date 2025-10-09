@@ -1,6 +1,7 @@
 'use server';
 
 import { translateSerbianWord } from '@/ai/flows/translate-serbian-word';
+import { generateExampleSentences } from '@/ai/flows/generate-example-sentences';
 import { unstable_cache as cache } from 'next/cache';
 import { parseCSV, WordEntry, WORD_CATEGORIES, ACTUAL_CATEGORIES, shuffleArray } from '@/lib/word-data';
 import { promises as fs } from 'fs';
@@ -117,34 +118,34 @@ export async function testCategoryLoad(categoryId: string) {
 
 export async function testMixedRandomLoad() {
   console.log('=== TESTING MIXED RANDOM (NO CACHE) ===');
-  
+
   const allWords: WordEntry[] = [];
   let totalExpected = 0;
-  
+
   for (const category of ACTUAL_CATEGORIES) {
     console.log(`\n--- Loading ${category.name} ---`);
     const categoryWords = await loadWordsFromCategory(category.id);
     const wordsToTake = Math.min(50, categoryWords.length); // Take only 50 for testing
     totalExpected += wordsToTake;
-    
+
     console.log(`Available: ${categoryWords.length}, Taking: ${wordsToTake}`);
-    
+
     const selectedWords = categoryWords.slice(0, wordsToTake).map(word => ({
       ...word,
       category: category.name,
       categoryId: category.id,
       categoryIcon: category.icon
     }));
-    
+
     allWords.push(...selectedWords);
     console.log(`Added: ${selectedWords.length}, Running total: ${allWords.length}`);
   }
-  
+
   console.log(`\n=== FINAL RESULTS ===`);
   console.log(`Expected total: ${totalExpected}`);
   console.log(`Actual total: ${allWords.length}`);
   console.log(`Categories processed: ${ACTUAL_CATEGORIES.length}`);
-  
+
   return {
     totalWords: allWords.length,
     expectedTotal: totalExpected,
@@ -155,6 +156,27 @@ export async function testMixedRandomLoad() {
     }))
   };
 }
+
+// Cache example sentences for an hour like translations
+export const getExampleSentences = cache(
+  async (serbianWord: string, englishTranslation: string, partOfSpeech?: string) => {
+    try {
+      const result = await generateExampleSentences({
+        serbianWord,
+        englishTranslation,
+        partOfSpeech
+      });
+      return result.examples;
+    } catch (error) {
+      console.error(`Error generating examples for "${serbianWord}":`, error);
+      return [];
+    }
+  },
+  ['serbian-examples'],
+  {
+    revalidate: 3600, // Revalidate the cache every hour
+  }
+);
 
 // Load ALL words from all categories mixed together
 export const getMixedRandomWords = cache(

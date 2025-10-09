@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Flashcard } from '@/components/flashcard';
-import { getTranslation } from '@/app/actions';
+import { ExampleSentencesDialog } from '@/components/example-sentences-dialog';
+import { getTranslation, getExampleSentences } from '@/app/actions';
 import { ArrowLeft, ArrowRight, RefreshCw, Home, CheckCircle, X, ThumbsUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -35,6 +36,11 @@ export function FirebaseStudySession({
   const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Example sentences state
+  const [showExamplesDialog, setShowExamplesDialog] = useState(false);
+  const [exampleSentences, setExampleSentences] = useState<Array<{serbian: string; english: string; explanation: string}>>([]);
+  const [isLoadingExamples, setIsLoadingExamples] = useState(false);
 
   // Load words when component mounts
   useEffect(() => {
@@ -133,6 +139,27 @@ export function FirebaseStudySession({
   const goToPrev = useCallback(() => {
     goTo((currentIndex - 1 + words.length) % words.length);
   }, [currentIndex, words.length, goTo]);
+
+  const handleShowExamples = useCallback(async () => {
+    if (!currentWord || !currentTranslation) return;
+
+    setShowExamplesDialog(true);
+    setIsLoadingExamples(true);
+    setExampleSentences([]);
+
+    try {
+      const examples = await getExampleSentences(
+        currentWord.item,
+        currentTranslation,
+        currentWord.partOfSpeech
+      );
+      setExampleSentences(examples);
+    } catch (error) {
+      console.error('Error loading examples:', error);
+    } finally {
+      setIsLoadingExamples(false);
+    }
+  }, [currentWord, currentTranslation]);
 
   if (!user) {
     return (
@@ -238,8 +265,20 @@ export function FirebaseStudySession({
           frequency={currentWord.frequency}
           category={currentWord.partOfSpeech}
           categoryIcon=""
+          onShowExamples={handleShowExamples}
+          showExamplesButton={isFlipped && !!currentTranslation}
         />
       </div>
+
+      {/* Example Sentences Dialog */}
+      <ExampleSentencesDialog
+        open={showExamplesDialog}
+        onOpenChange={setShowExamplesDialog}
+        serbianWord={currentWord.item}
+        englishTranslation={currentTranslation || ''}
+        examples={exampleSentences}
+        isLoading={isLoadingExamples}
+      />
 
       {/* Controls */}
       <div className="flex flex-col items-center gap-4 w-full max-w-md">

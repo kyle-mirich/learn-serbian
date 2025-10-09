@@ -34,8 +34,8 @@ export const wordsService = {
     const q = query(
       collection(db, COLLECTIONS.WORDS),
       where('partOfSpeech', '==', partOfSpeech),
+      orderBy('frequency', 'desc'),
       limit(limitCount)
-      // Note: orderBy('frequency', 'desc') removed temporarily until index is created
     );
     
     console.log('Executing Firestore query...');
