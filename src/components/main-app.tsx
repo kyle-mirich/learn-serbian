@@ -8,13 +8,9 @@ import { UserProfile } from '@/components/auth/user-profile';
 import { CategoryGrid } from '@/components/category-grid';
 import { StudyModeSelector, StudyMode } from '@/components/study-mode-selector';
 import { FirebaseStudySession } from '@/components/firebase-study-session';
-import { ProgressDashboard } from '@/components/progress/progress-dashboard';
 import { profileService } from '@/lib/firestore-service';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { SettingsPanel } from '@/components/settings/settings-panel';
-import { BookOpen, BarChart3, Settings } from 'lucide-react';
 
 const CATEGORIES = [
   { id: 'noun', name: 'Nouns', description: 'People, places, things', icon: '📝', color: 'bg-blue-100 text-blue-800' },
@@ -27,7 +23,7 @@ const CATEGORIES = [
   { id: 'numbers', name: 'Numbers', description: 'Numeric values', icon: '🔢', color: 'bg-red-100 text-red-800' },
 ];
 
-type AppState = 'categories' | 'study-mode' | 'studying' | 'progress';
+type AppState = 'categories' | 'study-mode' | 'studying';
 
 export function MainApp() {
   const { user, loading } = useAuth();
@@ -192,23 +188,7 @@ export function MainApp() {
         </div>
 
         {/* Main Content */}
-        <Tabs value={appState} onValueChange={(value) => setAppState(value as AppState)} className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
-            <TabsTrigger value="categories" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Study
-            </TabsTrigger>
-            <TabsTrigger value="progress" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Progress
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="categories" className="space-y-6">
+        <div className="space-y-6">
             <div className="text-center mb-6">
               <p className="font-body text-muted-foreground">Choose a category to start learning</p>
             </div>
@@ -275,16 +255,7 @@ export function MainApp() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          <TabsContent value="progress">
-            <ProgressDashboard />
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <SettingsPanel />
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
     </div>
   );
