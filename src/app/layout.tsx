@@ -1,12 +1,14 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/contexts/auth-context";
 
 
 export const metadata: Metadata = {
   title: 'Serbian Flash',
   description: 'A flashcard app for learning Serbian.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -22,10 +24,8 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Alegreya&family=Belleza&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
+        {children}
+        <Toaster />
       </body>
     </html>
   );

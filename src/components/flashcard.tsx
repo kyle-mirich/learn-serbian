@@ -53,48 +53,37 @@ export const Flashcard: FC<FlashcardProps> = ({
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
       >
         {/* Front of the card */}
-        <Card className="absolute h-full w-full [backface-visibility:hidden] cursor-pointer">
-          <CardContent className="flex h-full flex-col items-center justify-center p-6">
-            <h2 className="font-headline text-5xl text-primary mb-4">{serbianWord}</h2>
-            {(rank || category) && (
-              <div className="flex gap-2 flex-wrap justify-center">
-                {category && (
-                  <Badge variant="default" className="text-xs">
-                    {categoryIcon} {category}
-                  </Badge>
-                )}
-                {rank && (
-                  <Badge variant="secondary" className="text-xs">
-                    #{rank}
-                  </Badge>
-                )}
-                {frequency && (
-                  <Badge variant="outline" className="text-xs">
-                    {frequency.toLocaleString()} uses
-                  </Badge>
-                )}
-              </div>
+        <Card className="absolute h-full w-full [backface-visibility:hidden] cursor-pointer border-0 shadow-lg bg-white/90 backdrop-blur-sm">
+          <CardContent className="flex h-full flex-col items-center justify-center p-6 text-center">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-normal text-slate-800 mb-4 leading-tight">{serbianWord}</h2>
+            {category && (
+              <Badge variant="outline" className="text-xs mt-2">
+                {category}
+              </Badge>
             )}
           </CardContent>
         </Card>
 
         {/* Back of the card */}
-        <Card className="absolute h-full w-full [backface-visibility:hidden] [transform:rotateY(180deg)] cursor-pointer">
+        <Card className="absolute h-full w-full [backface-visibility:hidden] [transform:rotateY(180deg)] cursor-pointer border-0 shadow-lg bg-white/90 backdrop-blur-sm">
           <CardContent className="flex h-full flex-col items-center justify-center text-center p-6 gap-4">
             {isLoading ? (
-              <Skeleton className="h-12 w-3/4" />
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
+                <p className="text-sm text-slate-600">Getting translation...</p>
+              </div>
             ) : (
               <>
-                <h2 className="font-headline text-5xl text-accent-foreground">{englishWord}</h2>
+                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-normal text-slate-800 leading-tight">{englishWord}</h2>
                 {showExamplesButton && onShowExamples && englishWord && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleExamplesClick}
-                    className="mt-4 gap-2"
+                    className="mt-4 gap-2 text-xs sm:text-sm"
                   >
                     <BookOpen className="h-4 w-4" />
-                    See examples in a sentence
+                    Examples
                   </Button>
                 )}
               </>

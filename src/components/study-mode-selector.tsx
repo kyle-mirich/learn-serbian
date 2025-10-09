@@ -15,6 +15,7 @@ interface StudyModeSelectorProps {
   onStudyModeChange: (mode: StudyMode) => void;
   onStartStudying: () => void;
   wordCount: number;
+  onWordCountChange: (count: number) => void;
   progress: { studied: number; total: number };
 }
 
@@ -24,6 +25,7 @@ export function StudyModeSelector({
   onStudyModeChange,
   onStartStudying,
   wordCount,
+  onWordCountChange,
   progress
 }: StudyModeSelectorProps) {
   const progressPercent = progress.total > 0 
@@ -33,102 +35,58 @@ export function StudyModeSelector({
   const isMixedRandom = category.id === 'mixed-random';
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader className="text-center">
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <div className={cn(
-            'w-16 h-16 rounded-full flex items-center justify-center text-3xl text-white',
-            category.id === 'mixed-random' 
-              ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
-              : category.color
-          )}>
-            {category.icon}
-          </div>
-        </div>
-        <CardTitle className="font-headline text-2xl">{category.name}</CardTitle>
-        <p className="text-muted-foreground font-body">{category.description}</p>
-        
-        <div className="flex justify-center gap-4 mt-4">
-          <Badge variant="outline" className="flex items-center gap-1">
-            <BarChart3 className="w-4 h-4" />
-            {wordCount} words
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1">
-            <Target className="w-4 h-4" />
-            {progressPercent}% completed
-          </Badge>
-        </div>
+    <Card className="w-full max-w-lg border-0 shadow-lg bg-white/90 backdrop-blur-sm">
+      <CardHeader className="text-center pb-4">
+        <div className="text-4xl mb-3">{category.icon}</div>
+        <CardTitle className="text-xl sm:text-2xl text-slate-800">{category.name}</CardTitle>
+        <Badge variant="outline" className="mt-2">
+          {wordCount} words
+        </Badge>
       </CardHeader>
       
-      <CardContent className="space-y-6">
-        {isMixedRandom ? (
-          <div>
-            <h3 className="font-headline text-lg font-semibold mb-3 text-center">Mixed Random Mode</h3>
-            <div className="text-center p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border">
-              <Shuffle className="w-12 h-12 text-primary mx-auto mb-2" />
-              <p className="text-muted-foreground font-body">
-                Words from all categories mixed together in random order. Each word shows its category for context.
-              </p>
-            </div>
+      <CardContent className="space-y-6 pt-2">
+        <div>
+          <h3 className="text-sm font-medium text-slate-700 mb-3 text-center">Study Mode</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={studyMode === 'sequential' ? "default" : "outline"}
+              onClick={() => onStudyModeChange('sequential')}
+              className="text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Sequential
+            </Button>
+            <Button
+              variant={studyMode === 'random' ? "default" : "outline"}
+              onClick={() => onStudyModeChange('random')}
+              className="text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Random
+            </Button>
           </div>
-        ) : (
-          <div>
-            <h3 className="font-headline text-lg font-semibold mb-3">Choose Study Mode</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Card 
-                className={`cursor-pointer border-2 transition-all ${
-                  studyMode === 'sequential' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-primary/50'
-                }`}
-                onClick={() => onStudyModeChange('sequential')}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <ArrowUpDown className="w-8 h-8 text-primary" />
-                    <div>
-                      <h4 className="font-medium">Sequential</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Study words in frequency order
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card 
-                className={`cursor-pointer border-2 transition-all ${
-                  studyMode === 'random' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-primary/50'
-                }`}
-                onClick={() => onStudyModeChange('random')}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Shuffle className="w-8 h-8 text-primary" />
-                    <div>
-                      <h4 className="font-medium">Random</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Study words in random order
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-        
-        <div className="text-center">
-          <Button 
-            onClick={onStartStudying}
-            size="lg"
-            className="w-full sm:w-auto px-8"
-          >
-            Start Studying
-          </Button>
         </div>
+        
+        <div>
+          <h3 className="text-sm font-medium text-slate-700 mb-3 text-center">Number of Words</h3>
+          <div className="grid grid-cols-4 gap-2">
+            {[10, 20, 50, 100].map((count) => (
+              <Button
+                key={count}
+                variant={wordCount === count ? "default" : "outline"}
+                onClick={() => onWordCountChange(count)}
+                className="text-xs sm:text-sm h-8 sm:h-9"
+              >
+                {count}
+              </Button>
+            ))}
+          </div>
+        </div>
+        
+        <Button 
+          onClick={onStartStudying}
+          className="w-full h-10 sm:h-11 text-sm sm:text-base"
+        >
+          Start Studying
+        </Button>
       </CardContent>
     </Card>
   );

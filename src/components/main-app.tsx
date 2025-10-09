@@ -1,14 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/auth-context';
-import { auth } from '@/lib/firebase';
-import { AuthForm } from '@/components/auth/auth-form';
-import { UserProfile } from '@/components/auth/user-profile';
 import { CategoryGrid } from '@/components/category-grid';
 import { StudyModeSelector, StudyMode } from '@/components/study-mode-selector';
 import { FirebaseStudySession } from '@/components/firebase-study-session';
-import { profileService } from '@/lib/firestore-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -26,90 +21,12 @@ const CATEGORIES = [
 type AppState = 'categories' | 'study-mode' | 'studying';
 
 export function MainApp() {
-  const { user, loading } = useAuth();
   const [appState, setAppState] = useState<AppState>('categories');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [studyMode, setStudyMode] = useState<StudyMode>('sequential');
+  const [wordCount, setWordCount] = useState<number>(20);
 
-  // Create user profile when user signs up
-  useEffect(() => {
-    const createUserProfile = async () => {
-      if (user) {
-        try {
-          const existingProfile = await profileService.getProfile(user.uid);
-          if (!existingProfile) {
-            await profileService.createProfile(
-              user.uid,
-              user.email || '',
-              user.displayName || 'User'
-            );
-          }
-        } catch (error) {
-          console.error('Error creating user profile:', error);
-        }
-      }
-    };
 
-    createUserProfile();
-  }, [user]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E63946] mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show Firebase setup instructions if Firebase is not initialized
-  if (!auth) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="max-w-2xl">
-          <CardContent className="p-8">
-            <h1 className="text-2xl font-bold text-[#E63946] mb-4">Firebase Setup Required</h1>
-            <p className="text-muted-foreground mb-6">
-              Firebase environment variables are missing or invalid. Please follow these steps:
-            </p>
-            
-            <div className="space-y-4 text-sm">
-              <div>
-                <h3 className="font-semibold mb-2">1. Check your .env file:</h3>
-                <p className="text-muted-foreground">Make sure your .env file is in the root directory with these variables:</p>
-                <div className="bg-gray-100 p-3 rounded mt-2 font-mono text-xs">
-                  NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key<br/>
-                  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain<br/>
-                  NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id<br/>
-                  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_bucket<br/>
-                  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id<br/>
-                  NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-2">2. Restart your development server:</h3>
-                <p className="text-muted-foreground">Stop the server (Ctrl+C) and run <code className="bg-gray-100 px-1 rounded">pnpm dev</code> again</p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-2">3. Debug environment variables:</h3>
-                <p className="text-muted-foreground">
-                  Visit <a href="/env-check" className="text-[#E63946] underline">/env-check</a> to see which variables are missing
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthForm />;
-  }
 
   const selectedCategory = CATEGORIES.find(cat => cat.id === selectedCategoryId);
 
@@ -136,6 +53,7 @@ export function MainApp() {
       <FirebaseStudySession
         categoryId={selectedCategoryId}
         studyMode={studyMode === 'sequential' ? 'frequency' : studyMode}
+        wordCount={wordCount}
         onBack={handleBackToCategories}
       />
     );
@@ -143,14 +61,11 @@ export function MainApp() {
 
   if (appState === 'study-mode' && selectedCategory) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8">
-        <div className="absolute top-4 right-4">
-          <UserProfile />
-        </div>
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col items-center justify-center p-4 sm:p-6">
         
         <div className="text-center mb-8">
-          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary mb-2">Serbian Flash</h1>
-          <p className="font-body text-muted-foreground text-lg">Учимо srpski! (Let's learn Serbian!)</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2">Serbian Flash</h1>
+          <p className="text-slate-600 text-sm sm:text-base">Configure your study session</p>
         </div>
 
         <StudyModeSelector
@@ -158,8 +73,9 @@ export function MainApp() {
           studyMode={studyMode}
           onStudyModeChange={setStudyMode}
           onStartStudying={handleStartStudying}
-          wordCount={0} // Will be loaded dynamically
-          progress={{ studied: 0, total: 0 }} // Will be loaded from Firestore
+          wordCount={wordCount}
+          onWordCountChange={setWordCount}
+          progress={{ studied: 0, total: 0 }}
         />
 
         <div className="mt-6">
@@ -179,12 +95,9 @@ export function MainApp() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-4">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Serbian Flash</h1>
-            <p className="font-body text-muted-foreground text-lg">Учимо српски! (Let's learn Serbian!)</p>
-          </div>
-          <UserProfile />
+        <div className="text-center mb-8">
+          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Serbian Flash</h1>
+          <p className="font-body text-muted-foreground text-lg">Учимо српски! (Let's learn Serbian!)</p>
         </div>
 
         {/* Main Content */}
@@ -215,46 +128,7 @@ export function MainApp() {
               ))}
             </div>
             
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mt-8">
-              <Card 
-                className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
-                onClick={() => {
-                  setStudyMode('random');
-                  setSelectedCategoryId('mixed');
-                  setAppState('studying');
-                }}
-              >
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl mb-2">🎲</div>
-                  <h3 className="font-semibold mb-1">Random Words</h3>
-                  <p className="text-sm text-muted-foreground">Mixed categories</p>
-                </CardContent>
-              </Card>
-              
-              <Card 
-                className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
-                onClick={() => {
-                  setStudyMode('random');
-                  setSelectedCategoryId('review');
-                  setAppState('studying');
-                }}
-              >
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl mb-2">📚</div>
-                  <h3 className="font-semibold mb-1">Review</h3>
-                  <p className="text-sm text-muted-foreground">Spaced repetition</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl mb-2">📊</div>
-                  <h3 className="font-semibold mb-1">Today's Goal</h3>
-                  <p className="text-sm text-muted-foreground">0/20 words</p>
-                </CardContent>
-              </Card>
-            </div>
+
         </div>
       </div>
     </div>

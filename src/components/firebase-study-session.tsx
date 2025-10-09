@@ -5,29 +5,29 @@ import { Button } from '@/components/ui/button';
 import { Flashcard } from '@/components/flashcard';
 import { ExampleSentencesDialog } from '@/components/example-sentences-dialog';
 import { getTranslation, getExampleSentences } from '@/app/actions';
-import { ArrowLeft, ArrowRight, RefreshCw, Home, CheckCircle, X, ThumbsUp } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RefreshCw, Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAuth } from '@/contexts/auth-context';
-import { useProgress } from '@/hooks/use-progress';
+
 import { wordsService } from '@/lib/firestore-service';
 import { SerbianWord } from '@/lib/firestore-schemas';
 
 interface FirebaseStudySessionProps {
   categoryId: string;
   studyMode: 'frequency' | 'random' | 'review';
+  wordCount: number;
   onBack: () => void;
 }
 
 export function FirebaseStudySession({
   categoryId,
   studyMode,
+  wordCount,
   onBack,
 }: FirebaseStudySessionProps) {
-  const { user } = useAuth();
-  const { startSession, endSession, recordAnswer, sessionStats, currentSession, getWordsForReview } = useProgress();
+
   
   const [words, setWords] = useState<SerbianWord[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -47,33 +47,20 @@ export function FirebaseStudySession({
     const loadWords = async () => {
       try {
         setLoading(true);
-        console.log(`Loading words for category: ${categoryId}, mode: ${studyMode}`);
+        console.log(`Loading words for category: ${categoryId}, mode: ${studyMode}, count: ${wordCount}`);
         
         let loadedWords: SerbianWord[];
         
-        if (studyMode === 'review') {
-          // Load words that need review
-          console.log('Loading review words...');
-          const reviewProgress = await getWordsForReview(20);
-          const wordIds = reviewProgress.map(p => p.wordId);
-          loadedWords = await Promise.all(
-            wordIds.map(id => wordsService.getWordById(id)).filter(Boolean)
-          ) as SerbianWord[];
-        } else if (studyMode === 'random') {
+        if (studyMode === 'random') {
           console.log('Loading random words...');
-          loadedWords = await wordsService.getRandomWords(20, categoryId);
+          loadedWords = await wordsService.getRandomWords(wordCount, categoryId);
         } else {
           console.log('Loading words by category...');
-          loadedWords = await wordsService.getWordsByCategory(categoryId, 20);
+          loadedWords = await wordsService.getWordsByCategory(categoryId, wordCount);
         }
         
         console.log(`Loaded ${loadedWords.length} words:`, loadedWords.slice(0, 3));
         setWords(loadedWords);
-        
-        // Start a session
-        if (user) {
-          await startSession(studyMode === 'review' ? 'review' : 'flashcard');
-        }
       } catch (err) {
         console.error('Error loading words:', err);
         setError('Failed to load words. Please try again.');
@@ -82,19 +69,10 @@ export function FirebaseStudySession({
       }
     };
 
-    if (user) {
-      loadWords();
-    }
-  }, [categoryId, studyMode, user]);
+    loadWords();
+  }, [categoryId, studyMode, wordCount]);
 
-  // End session when component unmounts
-  useEffect(() => {
-    return () => {
-      if (currentSession) {
-        endSession();
-      }
-    };
-  }, [currentSession]);
+
 
   const currentWord = useMemo(() => words[currentIndex], [words, currentIndex]);
   const currentTranslation = useMemo(() => translations[currentWord?.id], [translations, currentWord?.id]);
@@ -111,19 +89,7 @@ export function FirebaseStudySession({
     }
   }, [isFlipped, currentWord, currentTranslation]);
 
-  const handleAnswer = useCallback(async (isCorrect: boolean) => {
-    if (!currentWord || !user) return;
-    
-    await recordAnswer(currentWord.id, isCorrect);
-    
-    // Auto-advance to next word after a short delay
-    setTimeout(() => {
-      if (currentIndex < words.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-        setIsFlipped(false);
-      }
-    }, 1000);
-  }, [currentWord, user, recordAnswer, currentIndex, words.length]);
+
 
   const goTo = useCallback((index: number) => {
     if (index >= 0 && index < words.length) {
@@ -161,17 +127,51 @@ export function FirebaseStudySession({
     }
   }, [currentWord, currentTranslation]);
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Alert className="max-w-md">
-          <AlertDescription>
-            Please sign in to access the study session.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          event.preventDefault();
+          goToPrev();
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          event.preventDefault();
+          goToNext();
+          break;
+        case ' ':
+        case 'f':
+        case 'F':
+          event.preventDefault();
+          handleFlip();
+          break;
+        case 'e':
+        case 'E':
+          if (isFlipped && currentTranslation) {
+            event.preventDefault();
+            handleShowExamples();
+          }
+          break;
+        case 'Escape':
+          event.preventDefault();
+          onBack();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [goToPrev, goToNext, handleFlip, handleShowExamples, isFlipped, currentTranslation, onBack]);
+
+
 
   if (loading) {
     return (
@@ -223,51 +223,38 @@ export function FirebaseStudySession({
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col p-4 sm:p-6">
       {/* Header with progress */}
-      <div className="text-center mb-6 w-full max-w-2xl">
-        <div className="mb-4">
-          <h1 className="font-headline text-3xl font-bold text-primary mb-2">
-            {studyMode === 'review' ? 'Review Session' : `${categoryId} Study`}
-          </h1>
-          <p className="text-muted-foreground font-body">
-            {studyMode === 'random' ? 'Random Order' : studyMode === 'review' ? 'Spaced Repetition' : 'Frequency Order'}
-          </p>
-        </div>
+      <div className="text-center mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2 capitalize">
+          {categoryId} Study
+        </h1>
         
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Session Progress</span>
-              <Badge variant="secondary">
-                {progress.current}/{progress.total}
-              </Badge>
-            </div>
-            <Progress value={progress.percent} className="h-2" />
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>Correct: {sessionStats.correctAnswers}</span>
-              <span>Total: {sessionStats.totalAnswers}</span>
-              <span>Accuracy: {sessionStats.totalAnswers > 0 ? Math.round((sessionStats.correctAnswers / sessionStats.totalAnswers) * 100) : 0}%</span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="max-w-sm mx-auto">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs sm:text-sm text-slate-600">Progress</span>
+            <Badge variant="secondary" className="text-xs">
+              {progress.current}/{progress.total}
+            </Badge>
+          </div>
+          <Progress value={progress.percent} className="h-1.5 sm:h-2" />
+        </div>
       </div>
 
       {/* Flashcard */}
-      <div className="w-full max-w-md mb-6 flex items-center justify-center" style={{ minHeight: '16rem' }}>
-        <Flashcard
-          serbianWord={currentWord.item}
-          englishWord={currentTranslation}
-          isFlipped={isFlipped}
-          isLoading={isPending}
-          onClick={handleFlip}
-          rank={currentIndex + 1}
-          frequency={currentWord.frequency}
-          category={currentWord.partOfSpeech}
-          categoryIcon=""
-          onShowExamples={handleShowExamples}
-          showExamplesButton={isFlipped && !!currentTranslation}
-        />
+      <div className="flex-1 flex items-center justify-center mb-4 sm:mb-6">
+        <div className="w-full max-w-sm sm:max-w-md" style={{ minHeight: '12rem' }}>
+          <Flashcard
+            serbianWord={currentWord.item}
+            englishWord={currentTranslation}
+            isFlipped={isFlipped}
+            isLoading={isPending}
+            onClick={handleFlip}
+            category={currentWord.partOfSpeech}
+            onShowExamples={handleShowExamples}
+            showExamplesButton={isFlipped && !!currentTranslation}
+          />
+        </div>
       </div>
 
       {/* Example Sentences Dialog */}
@@ -281,62 +268,37 @@ export function FirebaseStudySession({
       />
 
       {/* Controls */}
-      <div className="flex flex-col items-center gap-4 w-full max-w-md">
-        <div className="flex gap-2 w-full">
-          <Button onClick={goToPrev} variant="outline" size="lg" className="flex-1" aria-label="Previous card">
-            <ArrowLeft className="h-5 w-5" />
+      <div className="w-full max-w-sm sm:max-w-md mx-auto space-y-3 sm:space-y-4">
+        <div className="flex gap-2">
+          <Button onClick={goToPrev} variant="outline" className="flex-1 h-10 sm:h-12" aria-label="Previous (A or ←)">
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           
           <Button 
             onClick={handleFlip} 
-            size="lg" 
-            className="flex-2 px-6"
-            aria-label="Flip card"
+            className="flex-2 px-4 sm:px-6 h-10 sm:h-12 text-sm sm:text-base"
+            aria-label="Flip (Space or F)"
           >
-            <RefreshCw className={`h-5 w-5 mr-2 transition-transform duration-500 ${isFlipped ? 'rotate-180' : ''}`} />
+            <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 mr-2 transition-transform duration-500 ${isFlipped ? 'rotate-180' : ''}`} />
             {isFlipped ? 'Serbian' : 'English'}
           </Button>
           
-          <Button onClick={goToNext} variant="outline" size="lg" className="flex-1" aria-label="Next card">
-            <ArrowRight className="h-5 w-5" />
+          <Button onClick={goToNext} variant="outline" className="flex-1 h-10 sm:h-12" aria-label="Next (D or →)">
+            <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
         </div>
 
-        {/* Answer buttons - only show when card is flipped */}
-        {isFlipped && currentTranslation && (
-          <div className="flex gap-2 w-full">
-            <Button 
-              onClick={() => handleAnswer(false)} 
-              variant="outline" 
-              size="lg" 
-              className="flex-1 border-red-200 hover:bg-red-50"
-            >
-              <X className="h-4 w-4 mr-2 text-red-500" />
-              Incorrect
-            </Button>
-            
-            <Button 
-              onClick={() => handleAnswer(true)} 
-              variant="outline" 
-              size="lg" 
-              className="flex-1 border-green-200 hover:bg-green-50"
-            >
-              <ThumbsUp className="h-4 w-4 mr-2 text-green-500" />
-              Correct
-            </Button>
+        <Button onClick={onBack} variant="outline" className="w-full h-9 sm:h-10 text-sm">
+          <Home className="h-4 w-4 mr-2" />
+          End Session
+        </Button>
+
+        <div className="text-center space-y-1">
+          <div className="text-sm text-slate-600">
+            {currentIndex + 1} of {words.length}
           </div>
-        )}
-
-        <div className="flex gap-2 w-full">
-          <Button onClick={onBack} variant="outline" size="sm" className="flex-1">
-            <Home className="h-4 w-4 mr-2" />
-            End Session
-          </Button>
-        </div>
-
-        <div className="text-center">
-          <div className="text-sm text-muted-foreground font-body">
-            Word {currentIndex + 1} of {words.length}
+          <div className="text-xs text-slate-500 hidden sm:block">
+            A/← Previous • D/→ Next • Space/F Flip • Esc Exit
           </div>
         </div>
       </div>
