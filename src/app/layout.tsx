@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 
 export const metadata: Metadata = {
-  title: 'Serbian Flash',
+  title: 'Learn Serbian',
   description: 'A flashcard app for learning Serbian.',
   icons: {
     icon: '/favicon.svg',

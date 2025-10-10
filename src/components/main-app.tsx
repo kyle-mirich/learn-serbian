@@ -64,7 +64,7 @@ export function MainApp() {
       <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col items-center justify-center p-4 sm:p-6">
         
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2">Serbian Flash</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2">Learn Serbian</h1>
           <p className="text-slate-600 text-sm sm:text-base">Configure your study session</p>
         </div>
 
@@ -96,7 +96,7 @@ export function MainApp() {
       <div className="container mx-auto p-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Serbian Flash</h1>
+          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Learn Serbian</h1>
           <p className="font-body text-muted-foreground text-lg">Учимо српски! (Let's learn Serbian!)</p>
         </div>
 
