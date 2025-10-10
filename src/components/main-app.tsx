@@ -59,6 +59,8 @@ export function MainApp() {
     );
   }
 
+
+
   if (appState === 'study-mode' && selectedCategory) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col items-center justify-center p-4 sm:p-6">
@@ -96,7 +98,7 @@ export function MainApp() {
       <div className="container mx-auto p-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Learn Serbian</h1>
+          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Serbian Flash</h1>
           <p className="font-body text-muted-foreground text-lg">Учимо српски! (Let's learn Serbian!)</p>
         </div>
 
@@ -129,6 +131,30 @@ export function MainApp() {
             </div>
             
 
+        </div>
+        
+        {/* Footer */}
+        <div className="text-center mt-12 pb-8">
+          <p className="text-sm text-slate-500">
+            Built by{' '}
+            <a 
+              href="https://kyle-mirich.vercel.app/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Kyle Mirich
+            </a>
+            {' '}• Portfolio Project •{' '}
+            <a 
+              href="https://github.com/kyle-mirich/learn-serbian" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              View Source
+            </a>
+          </p>
         </div>
       </div>
     </div>

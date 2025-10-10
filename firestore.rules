@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read access to words collection
+    match /words/{document} {
+      allow read: if true;
+      allow write: if false; // Only allow writes through admin SDK
+    }
+    
+    // Block access to user data since we removed auth
+    match /user_progress/{document} {
+      allow read, write: if false;
+    }
+    
+    match /study_sessions/{document} {
+      allow read, write: if false;
+    }
+    
+    match /user_profiles/{document} {
+      allow read, write: if false;
+    }
+  }
+}

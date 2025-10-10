@@ -63,7 +63,11 @@ export function FirebaseStudySession({
         setWords(loadedWords);
       } catch (err) {
         console.error('Error loading words:', err);
-        setError('Failed to load words. Please try again.');
+        if (err instanceof Error && err.message.includes('permissions')) {
+          setError('Firestore permissions error. Please update your Firestore rules to allow public read access.');
+        } else {
+          setError('Failed to load words. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
