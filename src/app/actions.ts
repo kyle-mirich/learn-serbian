@@ -7,23 +7,17 @@ import { parseCSV, WordEntry, WORD_CATEGORIES, ACTUAL_CATEGORIES, shuffleArray }
 import { promises as fs } from 'fs';
 import path from 'path';
 
-// Using unstable_cache to cache translations across requests for an hour.
-export const getTranslation = cache(
-  async (serbianWord: string): Promise<string> => {
-    try {
-      const result = await translateSerbianWord({ serbianWord });
-      return result.englishTranslation;
-    } catch (error) {
-      console.error(`Error translating "${serbianWord}":`, error);
-      // Return a user-friendly error message
-      return 'Could not get translation.';
-    }
-  },
-  ['serbian-translations'], // A unique identifier for this cache segment
-  {
-    revalidate: 3600, // Revalidate the cache every hour
+// Translation without caching - each request calls the AI
+export async function getTranslation(serbianWord: string): Promise<string> {
+  try {
+    const result = await translateSerbianWord({ serbianWord });
+    return result.englishTranslation;
+  } catch (error) {
+    console.error(`Error translating "${serbianWord}":`, error);
+    // Return a user-friendly error message
+    return 'Could not get translation.';
   }
-);
+}
 
 async function loadWordsFromCategory(categoryId: string): Promise<WordEntry[]> {
   try {
